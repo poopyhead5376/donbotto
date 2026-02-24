@@ -1,0 +1,223 @@
+:root {
+  --bg-dark: #34353b;
+  --panel: #d8d9d5;
+  --line: #8f908f;
+  --ink: #1c1d1f;
+  --blue: #1a44c8;
+  --red: #cc2533;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: "Tahoma", "MS Sans Serif", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  background: linear-gradient(90deg, #2b2d33 0, #3a3c42 60%, #2b2d33 100%);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.grid-bg {
+  position: fixed;
+  inset: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-size: 22px 22px;
+  pointer-events: none;
+}
+
+.device {
+  position: relative;
+  width: min(420px, 92vw);
+  border: 2px solid #7c7d80;
+  background: var(--panel);
+  box-shadow: 0 0 0 2px #f1f1ef inset, 0 18px 40px rgba(0, 0, 0, 0.4);
+  z-index: 1;
+}
+
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  background: #a6a8aa;
+  border-bottom: 2px solid #888;
+  padding: 4px 8px;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+}
+
+.top-widgets {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 8px;
+  padding: 10px;
+}
+
+.clock-card,
+.calendar-card,
+.app-card,
+.console,
+.feature-list,
+.controls {
+  border: 2px solid var(--line);
+  background: #ecece8;
+  padding: 8px;
+}
+
+.analog-clock {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  margin: 4px auto;
+  border: 2px solid #7f7f7f;
+  background: radial-gradient(#fff, #f0f0f0);
+  position: relative;
+}
+
+.hand {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  transform-origin: bottom;
+  transform: translateX(-50%);
+  background: #505050;
+}
+
+.hour {
+  width: 4px;
+  height: 30px;
+}
+
+.minute {
+  width: 3px;
+  height: 44px;
+}
+
+.pin {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #202020;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.clock-card p,
+.calendar-card p {
+  margin: 6px 0 0;
+  font-size: 12px;
+  text-align: center;
+}
+
+.calendar-card h2 {
+  margin: 2px 0 6px;
+  font-size: 13px;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  font-size: 11px;
+}
+
+.calendar-grid span {
+  text-align: center;
+  border: 1px solid #bdbdbd;
+  background: #fff;
+  padding: 2px;
+}
+
+.calendar-grid .selected {
+  background: var(--blue);
+  color: #fff;
+  font-weight: 700;
+}
+
+.calendar-grid .muted {
+  color: #9a9a9a;
+}
+
+.app-card {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 10px;
+  align-items: center;
+  margin: 0 10px 8px;
+}
+
+.icon {
+  width: 52px;
+  height: 52px;
+  border: 2px solid #7b7b7b;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  background: linear-gradient(#fee78c, #f8bc35);
+}
+
+.app-card h1 {
+  margin: 0;
+  font-size: 21px;
+}
+
+.app-card p {
+  margin: 3px 0 0;
+  font-size: 12px;
+}
+
+.controls {
+  margin: 0 10px 8px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+button {
+  border: 2px solid #8c8c8c;
+  background: linear-gradient(#fff, #d8d8d8);
+  padding: 7px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+.console,
+.feature-list {
+  margin: 0 10px 8px;
+  font-size: 12px;
+}
+
+.console code {
+  background: #d1d2d5;
+  padding: 1px 4px;
+}
+
+.feature-list h3 {
+  margin: 0 0 6px;
+}
+
+.feature-list ol {
+  margin: 0;
+  padding-left: 17px;
+}
+
+@media (max-width: 390px) {
+  .top-widgets {
+    grid-template-columns: 1fr;
+  }
+
+  .analog-clock {
+    width: 90px;
+    height: 90px;
+  }
+}
