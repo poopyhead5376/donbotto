@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Donbotto | Free LLM Desktop Automation</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="grid-bg"></div>
+    <main class="device">
+      <header class="status-bar">
+        <span>DONBOTTO LIVE</span>
+        <span id="clock"></span>
+      </header>
+
+      <section class="top-widgets">
+        <article class="clock-card">
+          <div class="analog-clock">
+            <div class="hand hour" id="hourHand"></div>
+            <div class="hand minute" id="minuteHand"></div>
+            <div class="pin"></div>
+          </div>
+          <p>Realtime Agent Loop</p>
+        </article>
+
+        <article class="calendar-card">
+          <h2>09 / 2017 style</h2>
+          <div class="calendar-grid">
+            <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+            <span class="muted">27</span><span class="muted">28</span><span class="muted">29</span><span class="muted">30</span><span>1</span><span>2</span><span>3</span>
+            <span>4</span><span>5</span><span class="selected">6</span><span>7</span><span>8</span><span>9</span><span>10</span>
+          </div>
+          <p>Schedule tasks by prompt.</p>
+        </article>
+      </section>
+
+      <section class="app-card">
+        <div class="icon">🤖</div>
+        <div>
+          <h1>Donbotto</h1>
+          <p>Automate desktop tasks with free/open LLMs.</p>
+        </div>
+      </section>
+
+      <section class="controls">
+        <button data-action="open-terminal">Open Terminal</button>
+        <button data-action="type-command">Type xdotool command</button>
+        <button data-action="run-sequence">Run sequence</button>
+      </section>
+
+      <section class="console" id="console">
+        <p><strong>Mode:</strong> Real-time desktop control (no JSON action schema)</p>
+        <p>
+          Donbotto streams direct low-level actions through
+          <code>xdotool</code> on Linux to move mouse, type, click, switch windows,
+          and execute workflows live.
+        </p>
+      </section>
+
+      <section class="feature-list">
+        <h3>Core flow</h3>
+        <ol>
+          <li>User gives goal in plain language.</li>
+          <li>Local/free LLM plans next immediate UI action.</li>
+          <li>Donbotto executes action instantly with xdotool.</li>
+          <li>Vision/state check, then continue until done.</li>
+        </ol>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
