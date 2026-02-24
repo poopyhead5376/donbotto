@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Donbotto</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="grid-bg"></div>
+    <main class="device-shell">
+      <header class="topbar">
+        <span>Donbotto Home</span>
+        <span class="time" id="clock">--:--</span>
+      </header>
+
+      <section class="widget-row">
+        <article class="widget analog">
+          <h2>Realtime Agent</h2>
+          <div class="dial">
+            <div class="hand minute"></div>
+            <div class="hand hour"></div>
+            <div class="pivot"></div>
+          </div>
+        </article>
+        <article class="widget calendar">
+          <h2>Mission Board</h2>
+          <ul>
+            <li><strong>09:00</strong> Open browser + login</li>
+            <li><strong>09:02</strong> Fill invoice form</li>
+            <li><strong>09:04</strong> Send update to Slack</li>
+            <li><strong>09:05</strong> Archive receipts</li>
+          </ul>
+        </article>
+      </section>
+
+      <section class="hero-card">
+        <div class="icon">⚙</div>
+        <div>
+          <h1>donbotto</h1>
+          <p>
+            A totally free Linux desktop automation app powered by open-source LLMs. Instead of JSON action plans,
+            Donbotto executes live computer control with <code>xdotool</code> in real time.
+          </p>
+        </div>
+      </section>
+
+      <section class="features">
+        <button class="feature">Live cursor + keyboard control</button>
+        <button class="feature">Natural language task prompts</button>
+        <button class="feature">Local-first &amp; free forever</button>
+      </section>
+
+      <section class="terminal-panel">
+        <p class="title">Session Preview</p>
+        <pre id="log">$ donbotto run "download the sales csv and email finance"
+> launching model: llama3.1-local
+> xdotool search --name "Firefox" windowactivate
+> xdotool type "https://portal.example.com"
+> xdotool key Return
+> ... live control running ...</pre>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
