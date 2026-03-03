@@ -1,6 +1,6 @@
 # Mario's Puzzle Party (Mario Party DS) Bot
 
-This repository contains a **Python starter bot** for Mario Party DS's version of **Mario's Puzzle Party**, implemented with:
+This repository contains a **Python bot** for Mario Party DS's version of **Mario's Puzzle Party**, implemented with:
 
 - `opencv-python` (`cv2`) for board/candy detection.
 - `pydirectinput` for sending keyboard input to an emulator.
@@ -13,11 +13,13 @@ The bot logic is based on the core objective of Mario's Puzzle Party:
 - Matching colors in a **2x2 square** clears them.
 - Chains can occur when gravity causes new 2x2 squares after a clear.
 
-The heuristic in `mario_puzzle_party_bot.py` therefore prioritizes:
+## What is improved
 
-1. Immediate 2x2 completion.
-2. Setting up near-complete 2x2 shapes.
-3. Avoiding over-stacking near the top.
+- Supports `x` as the **flip key** for swapping the vertical pair order before dropping.
+- Detects a falling **pair** (top/bottom colors), not just a single candy.
+- Evaluates both orientations (normal + flipped) for each candidate column.
+- Uses a stronger board heuristic that rewards immediate 2x2 clears, local setup,
+  adjacency, and survivability (lower height / smoother skyline).
 
 ## Requirements
 
@@ -30,7 +32,8 @@ pip install opencv-python pydirectinput
 1. Open your emulator and put the game on screen.
 2. Route emulator output to a camera source OpenCV can read (OBS Virtual Camera is a common setup).
 3. Set `capture_index` and board ROI values in `main()`.
-4. Run:
+4. Ensure emulator keybinds match `left`, `right`, `down`, and `x`.
+5. Run:
 
 ```bash
 python mario_puzzle_party_bot.py
@@ -45,4 +48,4 @@ python mario_puzzle_party_bot.py
 
 ## Disclaimer
 
-This is a practical baseline and may need per-setup tuning for stable play.
+This is still a practical baseline and may need per-setup tuning for stable play.

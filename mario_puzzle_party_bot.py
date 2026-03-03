@@ -9,9 +9,9 @@ How it works (high level):
 1. Reads video frames from a capture device (typically an OBS Virtual Camera
    that shows your emulator window).
 2. Converts a board ROI into a color grid.
-3. Detects the currently falling candy near the top of the board.
-4. Picks a target column using a quick heuristic aimed at building 2x2 blocks.
-5. Sends left/right/down key presses with pydirectinput.
+3. Detects the currently falling pair near the top of the board.
+4. Evaluates target columns with both orientations (normal/flipped).
+5. Sends left/right/down and optional flip (`x`) key presses with pydirectinput.
 
 This is a practical starter bot: you will need to calibrate ROI and HSV ranges
 for your emulator, scale, and color profile.
@@ -19,6 +19,7 @@ for your emulator, scale, and color profile.
 
 from __future__ import annotations
 
+import copy
 import time
 from dataclasses import dataclass
 
@@ -42,6 +43,7 @@ class BotConfig:
     key_left: str = "left"
     key_right: str = "right"
     key_drop: str = "down"
+    key_flip: str = "x"
 
     # Capture index (0 is often webcam, OBS virtual camera may be 1+).
     capture_index: int = 0
@@ -131,17 +133,40 @@ class MarioPuzzlePartyBot:
 
         return board
 
-    def detect_falling_piece(self, board):
-        """Approximate the active candy by scanning the top rows for occupancy.
+    def detect_falling_pair(self, board):
+        """Approximate active pair by scanning top rows.
 
-        Returns (column_index, color_id) or (None, None).
+        Returns (column, top_color, bottom_color) or None when uncertain.
+        If only one piece is visible, treat pair as same color to keep moving.
         """
-        for r in range(0, 2):
+        found = []
+        for r in range(0, 3):
             for c in range(self.cfg.cols):
                 color = board[r][c]
                 if color != 0:
-                    return c, color
-        return None, None
+                    found.append((r, c, color))
+
+        if not found:
+            return None
+
+        found.sort(key=lambda x: x[0])
+        if len(found) == 1:
+            _, c, color = found[0]
+            return c, color, color
+
+        # Prefer two candies in same column (vertical pair).
+        for i in range(len(found)):
+            for j in range(i + 1, len(found)):
+                r1, c1, col1 = found[i]
+                r2, c2, col2 = found[j]
+                if c1 == c2 and abs(r1 - r2) <= 2:
+                    if r1 <= r2:
+                        return c1, col1, col2
+                    return c1, col2, col1
+
+        # Fallback to earliest two seen.
+        (_, c0, col0), (_, _, col1) = found[0], found[1]
+        return c0, col0, col1
 
     def _drop_row(self, board, col):
         for r in range(self.cfg.rows - 1, -1, -1):
@@ -149,35 +174,9 @@ class MarioPuzzlePartyBot:
                 return r
         return None
 
-    def _score_column(self, board, col, color):
-        row = self._drop_row(board, col)
-        if row is None:
-            return -10_000
-
-        score = 0
-
-        # Prefer deeper placements (survivability).
-        score += row * 2
-
-        # Reward adjacency of same color.
-        neighbors = ((row - 1, col), (row + 1, col), (row, col - 1), (row, col + 1))
-        for rr, cc in neighbors:
-            if 0 <= rr < self.cfg.rows and 0 <= cc < self.cfg.cols and board[rr][cc] == color:
-                score += 6
-
-        # Strong reward for creating/finishing a 2x2 same-color block.
-        score += self._square_completion_bonus(board, row, col, color)
-
-        # Light penalty for very tall columns.
-        filled = sum(1 for r in range(self.cfg.rows) if board[r][col] != 0)
-        score -= filled
-
-        return score
-
     def _square_completion_bonus(self, board, row, col, color):
         bonus = 0
 
-        # Candidate 2x2 windows containing (row, col).
         windows = [
             ((row - 1, col - 1), (row - 1, col), (row, col - 1), (row, col)),
             ((row - 1, col), (row - 1, col + 1), (row, col), (row, col + 1)),
@@ -203,28 +202,124 @@ class MarioPuzzlePartyBot:
             empty = sum(1 for v in values if v == 0)
 
             if same == 4:
-                bonus += 70
+                bonus += 80
             elif same == 3 and empty == 1:
-                bonus += 22
+                bonus += 28
             elif same == 2 and empty == 2:
-                bonus += 8
+                bonus += 10
 
         return bonus
 
-    def choose_target_column(self, board, piece_color):
-        best_col = 0
-        best_score = -10_000_000
+    def _column_height(self, board, col):
+        return sum(1 for r in range(self.cfg.rows) if board[r][col] != 0)
+
+    def _local_adjacency_bonus(self, board, row, col, color):
+        score = 0
+        neighbors = ((row - 1, col), (row + 1, col), (row, col - 1), (row, col + 1))
+        for rr, cc in neighbors:
+            if 0 <= rr < self.cfg.rows and 0 <= cc < self.cfg.cols:
+                if board[rr][cc] == color:
+                    score += 7
+                elif board[rr][cc] == 0:
+                    score += 1
+        return score
+
+    def _count_completed_squares(self, board):
+        total = 0
+        for r in range(self.cfg.rows - 1):
+            for c in range(self.cfg.cols - 1):
+                vals = [board[r][c], board[r][c + 1], board[r + 1][c], board[r + 1][c + 1]]
+                if vals[0] != 0 and vals.count(vals[0]) == 4:
+                    total += 1
+        return total
+
+    def _simulate_drop_pair(self, board, col, top_color, bottom_color, flipped):
+        sim = copy.deepcopy(board)
+        row_bottom = self._drop_row(sim, col)
+        if row_bottom is None:
+            return None
+
+        row_top = row_bottom - 1
+        if row_top < 0 or sim[row_top][col] != 0:
+            return None
+
+        first, second = (top_color, bottom_color)
+        if flipped:
+            first, second = second, first
+
+        # In a vertical pair, top piece lands at row_top and bottom at row_bottom.
+        sim[row_top][col] = first
+        sim[row_bottom][col] = second
+
+        return sim, row_top, row_bottom
+
+    def _score_simulated_state(self, board_before, board_after, col, row_top, row_bottom, top_color, bottom_color):
+        score = 0
+
+        # Strongly reward immediate completed 2x2 groups.
+        before_squares = self._count_completed_squares(board_before)
+        after_squares = self._count_completed_squares(board_after)
+        score += (after_squares - before_squares) * 140
+
+        # Reward local 2x2 setup around each placed candy.
+        score += self._square_completion_bonus(board_after, row_top, col, top_color)
+        score += self._square_completion_bonus(board_after, row_bottom, col, bottom_color)
+
+        # Reward local adjacency of same color around both pieces.
+        score += self._local_adjacency_bonus(board_after, row_top, col, top_color)
+        score += self._local_adjacency_bonus(board_after, row_bottom, col, bottom_color)
+
+        # Keep center-ish and avoid very tall columns.
+        center = (self.cfg.cols - 1) / 2.0
+        score -= int(abs(col - center) * 1.5)
+
+        heights = [self._column_height(board_after, c) for c in range(self.cfg.cols)]
+        max_h = max(heights)
+        score -= max_h * 2
+
+        # Punish top-danger states.
+        if max_h >= self.cfg.rows - 1:
+            score -= 250
+        elif max_h >= self.cfg.rows - 2:
+            score -= 120
+
+        # Penalize uneven skyline.
+        roughness = sum(abs(heights[i] - heights[i + 1]) for i in range(self.cfg.cols - 1))
+        score -= roughness
+
+        return score
+
+    def choose_best_move(self, board, top_color, bottom_color):
+        best = None
+        best_score = -10**9
 
         for col in range(self.cfg.cols):
-            s = self._score_column(board, col, piece_color)
-            if s > best_score:
-                best_col = col
-                best_score = s
+            for flipped in (False, True):
+                simulation = self._simulate_drop_pair(board, col, top_color, bottom_color, flipped)
+                if simulation is None:
+                    continue
 
-        return best_col
+                sim_board, row_top, row_bottom = simulation
+                placed_top = top_color if not flipped else bottom_color
+                placed_bottom = bottom_color if not flipped else top_color
+                score = self._score_simulated_state(
+                    board,
+                    sim_board,
+                    col,
+                    row_top,
+                    row_bottom,
+                    placed_top,
+                    placed_bottom,
+                )
 
-    def move_piece(self, current_col, target_col):
-        if current_col is None or target_col is None:
+                if score > best_score:
+                    best_score = score
+                    best = (col, flipped)
+
+        return best
+
+    def execute_move(self, current_col, target_col, flip_before_drop):
+        if current_col is None:
             return
 
         while current_col < target_col:
@@ -239,7 +334,10 @@ class MarioPuzzlePartyBot:
             pydirectinput.keyUp(self.cfg.key_left)
             current_col -= 1
 
-        # Fast drop once lined up.
+        if flip_before_drop:
+            pydirectinput.press(self.cfg.key_flip)
+            time.sleep(self.cfg.movement_press_s)
+
         pydirectinput.press(self.cfg.key_drop)
 
     def run(self):
@@ -252,11 +350,14 @@ class MarioPuzzlePartyBot:
                     continue
 
                 board = self.board_from_frame(frame)
-                current_col, color = self.detect_falling_piece(board)
+                falling = self.detect_falling_pair(board)
 
-                if color is not None:
-                    target_col = self.choose_target_column(board, color)
-                    self.move_piece(current_col, target_col)
+                if falling is not None:
+                    current_col, top_color, bottom_color = falling
+                    best_move = self.choose_best_move(board, top_color, bottom_color)
+                    if best_move is not None:
+                        target_col, flip = best_move
+                        self.execute_move(current_col, target_col, flip)
 
                 time.sleep(self.cfg.tick_sleep_s)
         finally:
@@ -273,6 +374,7 @@ def main() -> None:
         cols=6,
         rows=12,
         capture_index=0,
+        key_flip="x",
     )
 
     bot = MarioPuzzlePartyBot(cfg)
