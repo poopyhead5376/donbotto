@@ -32,6 +32,19 @@ python smw_path_overlay.py \
 
 Press `q` (or `Esc`) to quit.
 
+If you run into recursive "infinite tunnel" capture artifacts, keep feedback protection enabled (default):
+
+```bash
+python smw_path_overlay.py --window-title "Snes9x" --prevent-feedback-loop
+```
+
+You can disable docking or feedback protection for troubleshooting:
+
+```bash
+python smw_path_overlay.py --no-dock-overlay
+python smw_path_overlay.py --no-prevent-feedback-loop
+```
+
 ## What's improved
 
 - **Docked overlay behavior:** the assistant window now follows emulator position and size so it stays aligned.

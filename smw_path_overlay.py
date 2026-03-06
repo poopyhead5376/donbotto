@@ -308,12 +308,17 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--fallback-width", type=int, default=None)
     p.add_argument("--fallback-height", type=int, default=None)
     p.add_argument("--show-obstacles", action="store_true", help="Show obstacle debug window")
-    p.add_argument("--dock-overlay", action="store_true", default=True, help="Keep overlay window docked over emulator bounds")
+    p.add_argument(
+        "--dock-overlay",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Keep overlay window docked over emulator bounds",
+    )
     p.add_argument(
         "--prevent-feedback-loop",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=True,
-        help="Temporarily moves overlay window off-screen before each capture to avoid infinite mirror loop",
+        help="Temporarily moves overlay off-screen before capture to avoid recursive self-capture",
     )
     return p.parse_args()
 
@@ -335,13 +340,17 @@ def main() -> None:
 
     last_t = time.time()
     while True:
-        # Prevent infinite "hall of mirrors": if overlay sits over capture region,
-        # the capture includes our own drawings. Move overlay off-screen briefly,
-        # grab emulator frame, then move overlay back.
+        # Prevent infinite hall-of-mirrors loop when overlay sits above emulator.
+        # `moveWindow` may apply on the next GUI tick, so we force a tiny UI pump
+        # before grabbing the frame.
         if args.prevent_feedback_loop and args.dock_overlay:
             cv2.moveWindow(win, -20000, -20000)
+            cv2.waitKey(1)
+            time.sleep(0.005)
 
         frame, region = capture.grab()
+
+
         obstacles, ground, obstacle_dist = estimator.estimate_ground_obstacles(frame)
         mario = estimator.estimate_mario_position(frame, ground)
         candidates = planner.plan(mario, obstacles, ground, obstacle_dist)
