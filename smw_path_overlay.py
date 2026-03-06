@@ -102,6 +102,9 @@ class EmulatorCapture:
 
 
 class SceneEstimator:
+    def __init__(self) -> None:
+        self.prev_mario: Optional[Point] = None
+
     def estimate_ground_obstacles(self, frame: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         h, w = frame.shape[:2]
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -132,24 +135,64 @@ class SceneEstimator:
     def estimate_mario_position(self, frame: np.ndarray, ground_mask: np.ndarray) -> Point:
         h, w = frame.shape[:2]
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        search_w = max(48, w // 2)
+        search_w = max(64, int(w * 0.7))
 
-        red = cv2.bitwise_or(cv2.inRange(hsv, (0, 70, 50), (10, 255, 255)), cv2.inRange(hsv, (165, 70, 50), (179, 255, 255)))
-        blue = cv2.inRange(hsv, (90, 40, 30), (140, 255, 255))
+        red = cv2.bitwise_or(
+            cv2.inRange(hsv, (0, 70, 45), (12, 255, 255)),
+            cv2.inRange(hsv, (165, 70, 45), (179, 255, 255)),
+        )
+        blue = cv2.inRange(hsv, (88, 35, 25), (145, 255, 255))
 
-        mario_like = cv2.bitwise_or(cv2.bitwise_and(red, cv2.dilate(blue, np.ones((3, 3), np.uint8), 1)), cv2.bitwise_and(blue, cv2.dilate(red, np.ones((3, 3), np.uint8), 1)))
+        # Mario-like pixels are where red and blue are close (hat + overalls neighborhood).
+        rb_near = cv2.bitwise_or(
+            cv2.bitwise_and(red, cv2.dilate(blue, np.ones((5, 5), np.uint8), 1)),
+            cv2.bitwise_and(blue, cv2.dilate(red, np.ones((5, 5), np.uint8), 1)),
+        )
+        rb_near = cv2.morphologyEx(rb_near, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
 
-        roi = mario_like[:, :search_w]
-        ys, xs = np.where(roi > 0)
-        if len(xs) > 18:
-            return int(np.mean(xs)), int(np.mean(ys))
+        roi = rb_near[:, :search_w]
+        contours, _ = cv2.findContours(roi, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        best: Optional[Tuple[float, Point]] = None
+        for c in contours:
+            area = cv2.contourArea(c)
+            if area < 10:
+                continue
+            x, y, bw, bh = cv2.boundingRect(c)
+            # Use lower-center of blob so marker sits on Mario body/feet area.
+            cx = int(x + bw / 2)
+            cy = int(y + bh * 0.85)
+
+            score = area
+            if self.prev_mario is not None:
+                dx = cx - self.prev_mario[0]
+                dy = cy - self.prev_mario[1]
+                score -= 0.15 * (dx * dx + dy * dy) ** 0.5
+
+            if best is None or score > best[0]:
+                best = (score, (cx, cy))
+
+        if best is not None:
+            raw = best[1]
+            if self.prev_mario is None:
+                self.prev_mario = raw
+            else:
+                # Smooth position to keep marker stable on sprite.
+                ax = int(0.65 * self.prev_mario[0] + 0.35 * raw[0])
+                ay = int(0.65 * self.prev_mario[1] + 0.35 * raw[1])
+                self.prev_mario = (ax, ay)
+            return self.prev_mario
 
         col = max(8, w // 5)
         gy = np.where(ground_mask[:, col] > 0)[0]
         if len(gy):
-            return col, int(max(10, gy.min() - 14))
+            fallback = (col, int(max(10, gy.min() - 14)))
+        else:
+            fallback = (w // 4, int(h * 0.6))
 
-        return w // 4, int(h * 0.6)
+        if self.prev_mario is None:
+            self.prev_mario = fallback
+        return self.prev_mario
 
 
 class TrajectoryPlanner:
