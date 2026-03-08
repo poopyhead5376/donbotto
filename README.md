@@ -5,7 +5,8 @@ This project is a browser-based crowd-platformer prototype inspired by GBA-era p
 ## What changed
 
 - Keeps the original 50-agent AI simulation on a shared side-scrolling course.
-- Adds a **BYO ROM** upload control so the project can be extended toward real-game integration.
+- ROM loading now actually reads and validates your selected local file in-browser.
+- When a ROM is loaded, the simulation is re-seeded from ROM bytes (AI personalities + platform offsets), so loading is visibly applied.
 - Does **not** include Nintendo ROM/BIOS/emulator binaries.
 
 ## Run
@@ -18,8 +19,8 @@ Then open `http://localhost:8000`.
 
 ## Controls
 
-- `R`: reset all 50 agents with new AI personality values.
+- `R`: reset all 50 agents with current seed/personality settings.
 
-## Notes on "actual game" mode
+## Notes
 
-To wire this up to the real game, you must provide your own legally dumped ROM/BIOS and integrate a separately-licensed web GBA core.
+This demo can load a user-provided GBA file and react to it, but it is still not a full emulator runtime.

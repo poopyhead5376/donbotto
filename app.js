@@ -11,7 +11,7 @@ const world = {
   goalX: 4720,
 };
 
-const blocks = [
+const baseBlocks = [
   { x: 400, y: 420, w: 110, h: 24 },
   { x: 680, y: 360, w: 120, h: 24 },
   { x: 960, y: 300, w: 140, h: 24 },
@@ -24,6 +24,57 @@ const blocks = [
   { x: 3780, y: 410, w: 210, h: 24 },
   { x: 4180, y: 350, w: 160, h: 24 },
 ];
+
+let blocks = structuredClone(baseBlocks);
+let randomFn = Math.random;
+let loadedRomInfo = null;
+
+function mulberry32(seed) {
+  let t = seed >>> 0;
+  return function seededRandom() {
+    t += 0x6d2b79f5;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function fnv1a(bytes) {
+  let hash = 2166136261;
+  for (const byte of bytes) {
+    hash ^= byte;
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function readAscii(bytes, start, end) {
+  const chars = [];
+  for (let i = start; i < end; i += 1) {
+    const code = bytes[i];
+    if (!code) continue;
+    const ch = String.fromCharCode(code);
+    if (/^[A-Za-z0-9 !._-]$/.test(ch)) chars.push(ch);
+  }
+  return chars.join("").trim();
+}
+
+function isLikelyGbaRom(bytes) {
+  if (bytes.length < 0xc0) return false;
+  const signature = String.fromCharCode(bytes[0xac], bytes[0xad], bytes[0xae]);
+  const hasNintendoMark = signature === "AGB";
+  const hasGoodSize = bytes.length > 1024 * 128;
+  return hasNintendoMark || hasGoodSize;
+}
+
+function applyRomFlavor(seed) {
+  const seeded = mulberry32(seed);
+  randomFn = seeded;
+  blocks = baseBlocks.map((block) => ({
+    ...block,
+    y: Math.max(210, Math.min(world.floorY - 34, block.y + Math.round((seeded() - 0.5) * 40))),
+  }));
+}
 
 function createMario(index) {
   const lane = index % 10;
@@ -38,9 +89,9 @@ function createMario(index) {
     reached: false,
     color: `hsl(${(index * 37) % 360} 80% 60%)`,
     ai: {
-      speed: 2.1 + Math.random() * 1.4,
-      jumpStrength: 10 + Math.random() * 3,
-      bravery: Math.random(),
+      speed: 2.1 + randomFn() * 1.4,
+      jumpStrength: 10 + randomFn() * 3,
+      bravery: randomFn(),
       recovery: 0,
     },
   };
@@ -101,7 +152,7 @@ function applyCollisions(mario) {
 function aiStep(mario) {
   if (mario.reached) return;
 
-  const forwardSpeed = mario.ai.speed * (0.9 + Math.random() * 0.2);
+  const forwardSpeed = mario.ai.speed * (0.9 + randomFn() * 0.2);
   mario.vx += 0.14;
   if (mario.vx > forwardSpeed) mario.vx = forwardSpeed;
 
@@ -109,7 +160,7 @@ function aiStep(mario) {
     (b) => b.x > mario.x && b.x - mario.x < 35 && mario.y + mario.h > b.y - 12,
   );
 
-  const riskJump = Math.random() < 0.006 + mario.ai.bravery * 0.01;
+  const riskJump = randomFn() < 0.006 + mario.ai.bravery * 0.01;
 
   if (mario.onGround && (upcoming || riskJump || mario.ai.recovery > 30)) {
     mario.vy = -mario.ai.jumpStrength;
@@ -180,20 +231,45 @@ function updateHud() {
   document.getElementById("avg-progress").textContent = `${Math.round(avg * 100)}%`;
 }
 
-function handleRomFile() {
+async function handleRomFile() {
   const [file] = romInput.files || [];
   if (!file) {
+    loadedRomInfo = null;
+    blocks = structuredClone(baseBlocks);
+    randomFn = Math.random;
     romStatus.textContent = "No ROM loaded.";
+    reset();
     return;
   }
 
-  const looksLikeGba = file.name.toLowerCase().endsWith(".gba") || file.type === "application/octet-stream";
-  if (!looksLikeGba) {
-    romStatus.textContent = "Unsupported file. Please choose a .gba ROM dump you legally own.";
-    return;
-  }
+  romStatus.textContent = `Reading ${file.name}...`;
 
-  romStatus.textContent = `Loaded ${file.name}. Emulator integration requires a separately-licensed core + BIOS.`;
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (!isLikelyGbaRom(bytes)) {
+      romStatus.textContent = "This file does not look like a GBA ROM. Try a .gba dump.";
+      return;
+    }
+
+    const hash = fnv1a(bytes);
+    const title = readAscii(bytes, 0xa0, 0xac) || "Unknown Title";
+    const gameCode = readAscii(bytes, 0xac, 0xb0) || "----";
+
+    loadedRomInfo = {
+      name: file.name,
+      size: bytes.length,
+      title,
+      gameCode,
+      hash,
+    };
+
+    applyRomFlavor(hash);
+    reset();
+
+    romStatus.textContent = `ROM loaded: ${loadedRomInfo.title} (${loadedRomInfo.gameCode}) • ${(loadedRomInfo.size / (1024 * 1024)).toFixed(2)} MB`;
+  } catch (error) {
+    romStatus.textContent = `Failed to read file: ${error instanceof Error ? error.message : "unknown error"}`;
+  }
 }
 
 function tick() {
@@ -207,7 +283,10 @@ function tick() {
   requestAnimationFrame(tick);
 }
 
-romInput.addEventListener("change", handleRomFile);
+romInput.addEventListener("change", () => {
+  handleRomFile();
+});
+
 window.addEventListener("keydown", (event) => {
   if (event.key.toLowerCase() === "r") reset();
 });
