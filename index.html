@@ -10,14 +10,22 @@
     <main>
       <h1>50 AI Marios - Super Mario Advance Inspired Prototype</h1>
       <p>
-        This is an original tech demo inspired by GBA-era platformers. Fifty AI-controlled
-        “Marios” run the same level simultaneously on one screen.
+        Crowd-platformer demo: fifty AI runners traverse one side-scrolling course at the same
+        time. Includes a legal "bring your own ROM" hook for real-game integration.
       </p>
+
+      <section class="controls">
+        <label for="rom-input"><strong>Real-game mode (BYO ROM):</strong></label>
+        <input id="rom-input" type="file" accept=".gba,application/octet-stream" />
+        <span id="rom-status">No ROM loaded.</span>
+      </section>
+
       <div class="hud">
         <div><strong>Population:</strong> <span id="population">50</span></div>
         <div><strong>Reached Goal:</strong> <span id="goal-count">0</span></div>
         <div><strong>Average Progress:</strong> <span id="avg-progress">0%</span></div>
       </div>
+
       <canvas id="game" width="960" height="540" aria-label="AI Mario simulation"></canvas>
       <p class="note">
         Keyboard: <kbd>R</kbd> resets the simulation and randomizes AI personalities.

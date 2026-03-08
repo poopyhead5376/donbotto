@@ -1,5 +1,7 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+const romInput = document.getElementById("rom-input");
+const romStatus = document.getElementById("rom-status");
 
 const world = {
   gravity: 0.55,
@@ -104,7 +106,7 @@ function aiStep(mario) {
   if (mario.vx > forwardSpeed) mario.vx = forwardSpeed;
 
   const upcoming = blocks.find(
-    (b) => b.x > mario.x && b.x - mario.x < 35 && mario.y + mario.h > b.y - 12
+    (b) => b.x > mario.x && b.x - mario.x < 35 && mario.y + mario.h > b.y - 12,
   );
 
   const riskJump = Math.random() < 0.006 + mario.ai.bravery * 0.01;
@@ -172,11 +174,26 @@ function drawWorld() {
 function updateHud() {
   const finished = marios.filter((m) => m.reached).length;
   const avg =
-    marios.reduce((sum, mario) => sum + Math.min(mario.x / world.goalX, 1), 0) /
-    marios.length;
+    marios.reduce((sum, mario) => sum + Math.min(mario.x / world.goalX, 1), 0) / marios.length;
 
   document.getElementById("goal-count").textContent = String(finished);
   document.getElementById("avg-progress").textContent = `${Math.round(avg * 100)}%`;
+}
+
+function handleRomFile() {
+  const [file] = romInput.files || [];
+  if (!file) {
+    romStatus.textContent = "No ROM loaded.";
+    return;
+  }
+
+  const looksLikeGba = file.name.toLowerCase().endsWith(".gba") || file.type === "application/octet-stream";
+  if (!looksLikeGba) {
+    romStatus.textContent = "Unsupported file. Please choose a .gba ROM dump you legally own.";
+    return;
+  }
+
+  romStatus.textContent = `Loaded ${file.name}. Emulator integration requires a separately-licensed core + BIOS.`;
 }
 
 function tick() {
@@ -190,6 +207,7 @@ function tick() {
   requestAnimationFrame(tick);
 }
 
+romInput.addEventListener("change", handleRomFile);
 window.addEventListener("keydown", (event) => {
   if (event.key.toLowerCase() === "r") reset();
 });
