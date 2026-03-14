@@ -4,7 +4,9 @@ __all__ = [
     "agent",
     "builder",
     "knowledge",
+    "llm",
     "mod_scanner",
     "planner",
     "rcon_client",
+    "research",
 ]

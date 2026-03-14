@@ -6,14 +6,8 @@ This project is a practical **SIMA-2 style clone** for Bazzite/Linux that can:
 2. Persist learning outcomes in SQLite so it gets better at picking actions over time.
 3. Execute actions through Minecraft RCON.
 4. Build structures from JSON blueprints (supports mod blocks too).
-
-## Why this design
-
-A true visual embodied general agent requires client instrumentation and reinforcement pipelines.
-This implementation is intentionally robust and runnable today on Bazzite with modded servers:
-- Works headless.
-- Integrates with any Forge/Fabric/NeoForge server that enables RCON.
-- Learns mod intent from jar metadata and descriptions.
+5. Search YouTube tutorials for detected mod features (build and non-build learning).
+6. Use local Ollama models to generate adaptive mod-learning actions.
 
 ## Install
 
@@ -33,7 +27,7 @@ rcon.password=change_me
 rcon.port=25575
 ```
 
-## Run learning cycle
+## Run learning cycle (default planner)
 
 ```bash
 sima2-bazzite \
@@ -45,6 +39,30 @@ sima2-bazzite \
   learn
 ```
 
+## Run learning cycle with Ollama
+
+```bash
+ollama pull llama3.1
+sima2-bazzite \
+  --mods-dir /path/to/server/mods \
+  --rcon-password change_me \
+  --use-ollama \
+  --ollama-url http://127.0.0.1:11434 \
+  --ollama-model llama3.1 \
+  learn
+```
+
+## Research tutorials on YouTube
+
+This searches tutorials for feature use-cases such as mod progression, automation, and building.
+
+```bash
+sima2-bazzite \
+  --mods-dir /path/to/server/mods \
+  --rcon-password change_me \
+  research --feature-limit 4 --per-query-limit 3
+```
+
 ## Build a blueprint
 
 ```bash
@@ -54,8 +72,7 @@ sima2-bazzite \
   build --blueprint blueprints/starter_hut.json --origin 100 64 100
 ```
 
-## Extending to advanced control
+## Notes
 
-- Replace `say` commands in `agent.py` with macro actions (`/execute`, `/function`, KubeJS hooks, or server-side scripting).
-- Feed JEI recipe dumps and in-game logs into `knowledge.py` for richer learning.
-- Connect to a movement bot (mineflayer, Carpet bots, or custom client) while keeping this planner/knowledge system.
+- YouTube results are parsed from public search pages (no API key required).
+- For advanced automation, replace `say` actions in `agent.py` with command functions/macros/KubeJS hooks.

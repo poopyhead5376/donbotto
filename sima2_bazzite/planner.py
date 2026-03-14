@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Callable
 
 from sima2_bazzite.knowledge import KnowledgeStore
 
@@ -23,7 +24,12 @@ DEFAULT_ACTIONS: dict[str, list[str]] = {
 }
 
 
-def plan_next_actions(features: dict[str, float], knowledge: KnowledgeStore, limit: int = 5) -> list[PlanAction]:
+def plan_next_actions(
+    features: dict[str, float],
+    knowledge: KnowledgeStore,
+    limit: int = 5,
+    llm_action_provider: Callable[[str], str] | None = None,
+) -> list[PlanAction]:
     candidates: list[PlanAction] = []
     for feature, confidence in sorted(features.items(), key=lambda kv: kv[1], reverse=True):
         preferred = knowledge.best_action(feature)
@@ -33,6 +39,17 @@ def plan_next_actions(features: dict[str, float], knowledge: KnowledgeStore, lim
                     feature=feature,
                     command=preferred,
                     rationale=f"Reusing learned best action (confidence={confidence:.2f}).",
+                )
+            )
+            continue
+
+        if llm_action_provider is not None:
+            generated = llm_action_provider(feature)
+            candidates.append(
+                PlanAction(
+                    feature=feature,
+                    command=generated,
+                    rationale=f"LLM-suggested action for feature (confidence={confidence:.2f}).",
                 )
             )
             continue

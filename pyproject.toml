@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sima2-bazzite"
-version = "0.1.0"
+version = "0.2.0"
 description = "Autonomous Minecraft mod-aware bot framework for Bazzite"
 readme = "README.md"
 requires-python = ">=3.11"
