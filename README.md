@@ -76,3 +76,17 @@ sima2-bazzite \
 
 - YouTube results are parsed from public search pages (no API key required).
 - For advanced automation, replace `say` actions in `agent.py` with command functions/macros/KubeJS hooks.
+
+
+## Offline mode
+
+If your server is down, misconfigured, or you are testing locally, use offline mode to avoid RCON crashes and still record planned actions.
+
+```bash
+sima2-bazzite \
+  --mods-dir /path/to/server/mods \
+  --offline \
+  learn
+```
+
+If live RCON fails, the bot now records a failed attempt and prints a readable error instead of crashing.

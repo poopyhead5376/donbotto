@@ -12,7 +12,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--knowledge-db", type=Path, default=Path("./data/knowledge.sqlite3"))
     parser.add_argument("--rcon-host", default="127.0.0.1")
     parser.add_argument("--rcon-port", type=int, default=25575)
-    parser.add_argument("--rcon-password", required=True)
+    parser.add_argument("--rcon-password", default="")
+    parser.add_argument("--offline", action="store_true", help="Skip live RCON execution and print planned commands instead")
     parser.add_argument("--use-ollama", action="store_true", help="Use local Ollama model for adaptive action generation")
     parser.add_argument("--ollama-url", default="http://127.0.0.1:11434")
     parser.add_argument("--ollama-model", default="llama3.1")
@@ -39,6 +40,7 @@ def main() -> None:
             rcon_host=args.rcon_host,
             rcon_port=args.rcon_port,
             rcon_password=args.rcon_password,
+            offline=args.offline,
             use_ollama=args.use_ollama,
             ollama_url=args.ollama_url,
             ollama_model=args.ollama_model,

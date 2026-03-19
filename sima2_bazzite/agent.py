@@ -19,6 +19,7 @@ class AgentConfig:
     rcon_host: str
     rcon_port: int
     rcon_password: str
+    offline: bool = False
     use_ollama: bool = False
     ollama_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "llama3.1"
@@ -28,7 +29,12 @@ class Sima2BazziteAgent:
     def __init__(self, config: AgentConfig):
         self.config = config
         self.knowledge = KnowledgeStore(config.knowledge_db)
-        self.rcon = RconClient(config.rcon_host, config.rcon_password, config.rcon_port)
+        self.rcon = RconClient(
+            config.rcon_host,
+            config.rcon_password,
+            config.rcon_port,
+            enabled=not config.offline,
+        )
         self.ollama = None
         if config.use_ollama:
             self.ollama = OllamaClient(OllamaConfig(base_url=config.ollama_url, model=config.ollama_model))
@@ -62,21 +68,30 @@ class Sima2BazziteAgent:
         actions = plan_next_actions(features, self.knowledge, llm_action_provider=self._llm_action if self.ollama else None)
         for action in actions:
             server_cmd = f"say [SIMA2] feature={action.feature} action={action.command}"
-            result = self.rcon.run(server_cmd)
-            outputs.append(result)
+            result = self.rcon.run_safe(server_cmd)
+            if result.ok:
+                outputs.append(result.output)
+                success = True
+                notes = action.rationale
+            else:
+                outputs.append(f"[RCON ERROR] {result.error}")
+                success = False
+                notes = f"{action.rationale} | {result.error}"
             self.knowledge.record_attempt(
                 SkillAttempt(
                     feature=action.feature,
                     action=action.command,
-                    success=True,
-                    notes=action.rationale,
+                    success=success,
+                    notes=notes,
                 )
             )
         return outputs
 
     def build(self, blueprint_path: Path, origin: tuple[int, int, int]) -> list[str]:
         blueprint = load_blueprint(blueprint_path)
-        return build_structure(self.rcon, blueprint, origin)
+        return [result.output if result.ok else f"[RCON ERROR] {result.error}" for result in [self.rcon.run_safe(
+            f"setblock {origin[0] + step.x} {origin[1] + step.y} {origin[2] + step.z} {step.block}"
+        ) for step in blueprint]]
 
     def close(self) -> None:
         self.knowledge.close()
