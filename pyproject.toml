@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sima2-bazzite"
+version = "0.2.0"
+description = "Autonomous Minecraft mod-aware bot framework for Bazzite"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "mcrcon>=0.7.0",
+]
+
+[project.scripts]
+sima2-bazzite = "sima2_bazzite.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["sima2_bazzite*"]
