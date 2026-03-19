@@ -7,7 +7,7 @@ from sima2_bazzite.agent import AgentConfig, Sima2BazziteAgent
 from sima2_bazzite.network import auto_detect_rcon_host
 
 
-COMMANDS_REQUIRING_MODS_DIR = {"learn", "build", "research"}
+COMMANDS_REQUIRING_MODS_DIR = {"learn", "research", "build-from-tutorial"}
 
 
 def parse_args() -> argparse.Namespace:
@@ -25,8 +25,8 @@ def parse_args() -> argparse.Namespace:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("learn", help="Analyze mods and execute learning cycle")
 
-    build = sub.add_parser("build", help="Build a structure from blueprint JSON")
-    build.add_argument("--blueprint", type=Path, required=True)
+    build = sub.add_parser("build-from-tutorial", help="Search YouTube tutorials and autonomously build a matching structure")
+    build.add_argument("--query", required=True, help="Structure to search for, such as 'starter house' or 'watch tower'")
     build.add_argument("--origin", nargs=3, type=int, metavar=("X", "Y", "Z"), required=True)
 
     research = sub.add_parser("research", help="Search YouTube tutorials for detected mod features")
@@ -36,7 +36,7 @@ def parse_args() -> argparse.Namespace:
     sub.add_parser("show-ip", help="Print the auto-detected local IP that would be used for RCON")
     args = parser.parse_args()
     if args.command in COMMANDS_REQUIRING_MODS_DIR and args.mods_dir is None:
-        parser.error("--mods-dir is required for learn, build, and research")
+        parser.error("--mods-dir is required for learn, research, and build-from-tutorial")
     return args
 
 
@@ -64,8 +64,13 @@ def main() -> None:
             outputs = agent.execute_learning_cycle()
             for line in outputs:
                 print(line)
-        elif args.command == "build":
-            outputs = agent.build(args.blueprint, tuple(args.origin))
+        elif args.command == "build-from-tutorial":
+            plan, outputs = agent.build_from_tutorial(args.query, tuple(args.origin))
+            print(f"Tutorial query: {plan.query}")
+            print(f"Rationale: {plan.rationale}")
+            if plan.source_video:
+                print(f"Source video: {plan.source_video.title} -> {plan.source_video.url}")
+            print(f"Blocks placed: {len(plan.placements)}")
             for line in outputs:
                 print(line)
         else:

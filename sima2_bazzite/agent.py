@@ -11,6 +11,7 @@ from sima2_bazzite.network import auto_detect_rcon_host
 from sima2_bazzite.planner import plan_next_actions
 from sima2_bazzite.rcon_client import RconClient
 from sima2_bazzite.research import VideoResult, make_feature_queries, youtube_search
+from sima2_bazzite.tutorial_builder import TutorialBuildPlan, plan_build_from_tutorial
 
 
 @dataclass(slots=True)
@@ -52,6 +53,9 @@ class Sima2BazziteAgent:
         for query in queries:
             findings[query] = youtube_search(query, limit=per_query_limit)
         return findings
+
+    def plan_tutorial_build(self, query: str) -> TutorialBuildPlan:
+        return plan_build_from_tutorial(query)
 
     def _llm_action(self, feature: str) -> str:
         if not self.ollama or not self.ollama.available():
@@ -97,6 +101,15 @@ class Sima2BazziteAgent:
             result = self.rcon.run_safe(command)
             outputs.append(result.output if result.ok else f"[RCON ERROR] {result.error}")
         return outputs
+
+    def build_from_tutorial(self, query: str, origin: tuple[int, int, int]) -> tuple[TutorialBuildPlan, list[str]]:
+        plan = self.plan_tutorial_build(query)
+        outputs: list[str] = []
+        for step in plan.placements:
+            command = f"setblock {origin[0] + step.x} {origin[1] + step.y} {origin[2] + step.z} {step.block}"
+            result = self.rcon.run_safe(command)
+            outputs.append(result.output if result.ok else f"[RCON ERROR] {result.error}")
+        return plan, outputs
 
     def close(self) -> None:
         self.knowledge.close()

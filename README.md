@@ -5,7 +5,7 @@ This project is a practical **SIMA-2 style clone** for Bazzite/Linux that can:
 1. Inspect your modpack and infer each mod's feature domains (machines, magic, farming, etc.).
 2. Persist learning outcomes in SQLite so it gets better at picking actions over time.
 3. Execute actions through Minecraft RCON.
-4. Build structures from JSON blueprints (supports mod blocks too).
+4. Search YouTube building tutorials, infer a matching structure plan, and autonomously place the structure in-game.
 5. Search YouTube tutorials for detected mod features (build and non-build learning).
 6. Use local Ollama models to generate adaptive mod-learning actions.
 
@@ -69,18 +69,21 @@ sima2-bazzite \
   research --feature-limit 4 --per-query-limit 3
 ```
 
-## Build a blueprint
+## Build directly from tutorial search
+
+This flow searches YouTube for a structure tutorial, picks the best matching result, generates a structure plan, and places it automatically.
 
 ```bash
 sima2-bazzite \
   --mods-dir /path/to/server/mods \
   --rcon-password change_me \
-  build --blueprint blueprints/starter_hut.json --origin 100 64 100
+  build-from-tutorial --query "starter house" --origin 100 64 100
 ```
 
 ## Notes
 
 - YouTube results are parsed from public search pages (no API key required).
+- Tutorial-based building currently infers a practical structure plan from the tutorial query/title and then places the blocks autonomously.
 - For advanced automation, replace `say` actions in `agent.py` with command functions/macros/KubeJS hooks.
 
 

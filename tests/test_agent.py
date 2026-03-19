@@ -39,3 +39,34 @@ def test_execute_learning_cycle_does_not_crash_on_rcon_failure(tmp_path: Path) -
     assert outputs[0].startswith("[RCON ERROR]")
     assert agent.knowledge.success_rate("machines") == 0.0
     agent.close()
+
+
+def test_build_from_tutorial_uses_generated_plan(tmp_path: Path) -> None:
+    mods_dir = tmp_path / "mods"
+    mods_dir.mkdir()
+    db_path = tmp_path / "knowledge.db"
+    agent = Sima2BazziteAgent(
+        AgentConfig(
+            mods_dir=mods_dir,
+            knowledge_db=db_path,
+            rcon_host="127.0.0.1",
+            rcon_port=25575,
+            rcon_password="",
+            offline=True,
+        )
+    )
+    agent.plan_tutorial_build = lambda query: type(
+        "Plan",
+        (),
+        {
+            "query": query,
+            "rationale": "test plan",
+            "source_video": None,
+            "placements": [type("Placement", (), {"x": 0, "y": 0, "z": 0, "block": "oak_planks"})()],
+        },
+    )()
+    agent.rcon = StubRcon(True, "ok:")
+    plan, outputs = agent.build_from_tutorial("starter house", (10, 64, 10))
+    assert plan.query == "starter house"
+    assert outputs == ["ok:setblock 10 64 10 oak_planks"]
+    agent.close()

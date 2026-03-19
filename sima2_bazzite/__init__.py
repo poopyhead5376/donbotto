@@ -10,4 +10,5 @@ __all__ = [
     "planner",
     "rcon_client",
     "research",
+    "tutorial_builder",
 ]
