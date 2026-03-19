@@ -4,13 +4,17 @@ import argparse
 from pathlib import Path
 
 from sima2_bazzite.agent import AgentConfig, Sima2BazziteAgent
+from sima2_bazzite.network import auto_detect_rcon_host
+
+
+COMMANDS_REQUIRING_MODS_DIR = {"learn", "build", "research"}
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="SIMA2 clone for modded Minecraft on Bazzite")
-    parser.add_argument("--mods-dir", type=Path, required=True)
+    parser.add_argument("--mods-dir", type=Path)
     parser.add_argument("--knowledge-db", type=Path, default=Path("./data/knowledge.sqlite3"))
-    parser.add_argument("--rcon-host", default="127.0.0.1")
+    parser.add_argument("--rcon-host", default="auto", help="RCON host/IP. Use 'auto' to detect the local IP automatically")
     parser.add_argument("--rcon-port", type=int, default=25575)
     parser.add_argument("--rcon-password", default="")
     parser.add_argument("--offline", action="store_true", help="Skip live RCON execution and print planned commands instead")
@@ -28,11 +32,20 @@ def parse_args() -> argparse.Namespace:
     research = sub.add_parser("research", help="Search YouTube tutorials for detected mod features")
     research.add_argument("--feature-limit", type=int, default=3)
     research.add_argument("--per-query-limit", type=int, default=3)
-    return parser.parse_args()
+
+    sub.add_parser("show-ip", help="Print the auto-detected local IP that would be used for RCON")
+    args = parser.parse_args()
+    if args.command in COMMANDS_REQUIRING_MODS_DIR and args.mods_dir is None:
+        parser.error("--mods-dir is required for learn, build, and research")
+    return args
 
 
 def main() -> None:
     args = parse_args()
+    if args.command == "show-ip":
+        print(auto_detect_rcon_host())
+        return
+
     agent = Sima2BazziteAgent(
         AgentConfig(
             mods_dir=args.mods_dir,

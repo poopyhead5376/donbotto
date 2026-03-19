@@ -19,6 +19,12 @@ pip install -e .
 
 ## Configure server RCON
 
+By default, `--rcon-host auto` will detect your local LAN IP automatically. You can print the detected value with:
+
+```bash
+sima2-bazzite show-ip
+```
+
 In `server.properties`:
 
 ```ini
@@ -33,7 +39,7 @@ rcon.port=25575
 sima2-bazzite \
   --mods-dir /path/to/server/mods \
   --knowledge-db ./data/knowledge.sqlite3 \
-  --rcon-host 127.0.0.1 \
+  --rcon-host auto \
   --rcon-port 25575 \
   --rcon-password change_me \
   learn

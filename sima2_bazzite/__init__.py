@@ -6,6 +6,7 @@ __all__ = [
     "knowledge",
     "llm",
     "mod_scanner",
+    "network",
     "planner",
     "rcon_client",
     "research",

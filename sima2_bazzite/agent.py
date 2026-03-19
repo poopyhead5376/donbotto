@@ -3,10 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from sima2_bazzite.builder import build_structure, load_blueprint
+from sima2_bazzite.builder import load_blueprint
 from sima2_bazzite.knowledge import KnowledgeStore, SkillAttempt
 from sima2_bazzite.llm import OllamaClient, OllamaConfig
 from sima2_bazzite.mod_scanner import scan_mods, summarize_features
+from sima2_bazzite.network import auto_detect_rcon_host
 from sima2_bazzite.planner import plan_next_actions
 from sima2_bazzite.rcon_client import RconClient
 from sima2_bazzite.research import VideoResult, make_feature_queries, youtube_search
@@ -16,9 +17,9 @@ from sima2_bazzite.research import VideoResult, make_feature_queries, youtube_se
 class AgentConfig:
     mods_dir: Path
     knowledge_db: Path
-    rcon_host: str
-    rcon_port: int
-    rcon_password: str
+    rcon_host: str = "auto"
+    rcon_port: int = 25575
+    rcon_password: str = ""
     offline: bool = False
     use_ollama: bool = False
     ollama_url: str = "http://127.0.0.1:11434"
@@ -28,9 +29,10 @@ class AgentConfig:
 class Sima2BazziteAgent:
     def __init__(self, config: AgentConfig):
         self.config = config
+        resolved_host = auto_detect_rcon_host() if config.rcon_host == "auto" else config.rcon_host
         self.knowledge = KnowledgeStore(config.knowledge_db)
         self.rcon = RconClient(
-            config.rcon_host,
+            resolved_host,
             config.rcon_password,
             config.rcon_port,
             enabled=not config.offline,
@@ -89,9 +91,12 @@ class Sima2BazziteAgent:
 
     def build(self, blueprint_path: Path, origin: tuple[int, int, int]) -> list[str]:
         blueprint = load_blueprint(blueprint_path)
-        return [result.output if result.ok else f"[RCON ERROR] {result.error}" for result in [self.rcon.run_safe(
-            f"setblock {origin[0] + step.x} {origin[1] + step.y} {origin[2] + step.z} {step.block}"
-        ) for step in blueprint]]
+        outputs: list[str] = []
+        for step in blueprint:
+            command = f"setblock {origin[0] + step.x} {origin[1] + step.y} {origin[2] + step.z} {step.block}"
+            result = self.rcon.run_safe(command)
+            outputs.append(result.output if result.ok else f"[RCON ERROR] {result.error}")
+        return outputs
 
     def close(self) -> None:
         self.knowledge.close()
